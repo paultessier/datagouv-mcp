@@ -1,5 +1,8 @@
 # data.gouv.fr MCP Server
 
+<img width="1200" height="675" alt="image" src="https://github.com/user-attachments/assets/5d20e992-349a-4b3b-9a0a-ebe308735cc9" />
+
+
 [![CircleCI](https://circleci.com/gh/datagouv/datagouv-mcp.svg?style=svg)](https://circleci.com/gh/datagouv/datagouv-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -17,68 +20,7 @@ Use the hosted endpoint `https://mcp.data.gouv.fr/mcp` (recommended). If you sel
 
 The MCP server configuration depends on your client. Use the appropriate configuration format for your client:
 
-### ChatGPT
-
-*Available for paid plans only (Plus, Pro, Team, and Enterprise).*
-
-1. **Access Settings**: Open ChatGPT in your browser, go to `Settings`, then `Apps and connectors`.
-2. **Enable Dev Mode**: Open `Advanced settings` and enable **Developer mode**.
-3. **Add Connector**: Return to `Settings` > `Connectors` > `Browse connectors` and click **Add a new connector**.
-4. **Configure the connector**: Set the URL to `https://mcp.data.gouv.fr/mcp` and save to activate the tools.
-
-### Claude Desktop
-
-Add the following to your Claude Desktop configuration file (typically `~/Library/Application Support/Claude/claude_desktop_config.json` on MacOS, or `%APPDATA%\Claude\claude_desktop_config.json` on Windows):
-
-```json
-{
-  "mcpServers": {
-    "datagouv": {
-      "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://mcp.data.gouv.fr/mcp"
-      ]
-    }
-  }
-}
-```
-
-### Claude Code
-
-Use the `claude mcp` command to add the MCP server:
-
-```shell
-claude mcp add --transport http datagouv https://mcp.data.gouv.fr/mcp
-```
-
-### Gemini CLI
-
-Add the following to your `~/.gemini/settings.json` file:
-
-```json
-{
-  "mcpServers": {
-    "datagouv": {
-      "httpUrl": "https://mcp.data.gouv.fr/mcp"
-    }
-  }
-}
-```
-
-### Mistral Vibe CLI
-
-Edit your Vibe config (default `~/.vibe/config.toml`) and add the MCP server:
-
-```toml
-[[mcp_servers]]
-name = "datagouv"
-transport = "streamable-http"
-url = "https://mcp.data.gouv.fr/mcp"
-```
-
-See the full Vibe MCP options in the official docs: [MCP server configuration](https://github.com/mistralai/mistral-vibe?tab=readme-ov-file#mcp-server-configuration).
-
+[AnythingLLM](#anythingllm) | [ChatGPT](#chatgpt) | [Claude Code](#claude-code) | [Claude Desktop](#claude-desktop) | [Cursor](#cursor) | [Gemini CLI](#gemini-cli) | [IBM Bob](#ibm-bob) | [Kiro CLI](#kiro-cli) | [Kiro IDE](#kiro-ide) | [Le Chat (Mistral)](#le-chat-mistral) | [Mistral Vibe](#mistral-vibe-cli) | [VS Code](#vs-code) | [Windsurf](#windsurf)
 ### AnythingLLM
 
 1. Locate the `anythingllm_mcp_servers.json` file in your AnythingLLM storage plugins directory:
@@ -101,16 +43,36 @@ See the full Vibe MCP options in the official docs: [MCP server configuration](h
 
 For more details, see the [AnythingLLM MCP documentation](https://docs.anythingllm.com/mcp-compatibility/overview).
 
-### VS Code
+### ChatGPT
 
-Add the following to your VS Code `settings.json`:
+*Available for paid plans only (Plus, Pro, Team, and Enterprise).*
+
+1. **Access Settings**: Open ChatGPT in your browser, go to `Settings`, then `Apps and connectors`.
+2. **Enable Dev Mode**: Open `Advanced settings` and enable **Developer mode**.
+3. **Add Connector**: Return to `Settings` > `Connectors` > `Browse connectors` and click **Add a new connector**.
+4. **Configure the connector**: Set the URL to `https://mcp.data.gouv.fr/mcp` and save to activate the tools.
+
+### Claude Code
+
+Use the `claude mcp` command to add the MCP server:
+
+```shell
+claude mcp add --transport http datagouv https://mcp.data.gouv.fr/mcp
+```
+
+### Claude Desktop
+
+Add the following to your Claude Desktop configuration file (typically `~/Library/Application Support/Claude/claude_desktop_config.json` on MacOS, or `%APPDATA%\Claude\claude_desktop_config.json` on Windows):
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "datagouv": {
-      "url": "https://mcp.data.gouv.fr/mcp",
-      "type": "http"
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://mcp.data.gouv.fr/mcp"
+      ]
     }
   }
 }
@@ -135,6 +97,70 @@ Cursor supports MCP servers through its settings. To configure the server:
 }
 ```
 
+### Gemini CLI
+
+Add the following to your `~/.gemini/settings.json` file:
+
+```json
+{
+  "mcpServers": {
+    "datagouv": {
+      "httpUrl": "https://mcp.data.gouv.fr/mcp"
+    }
+  }
+}
+```
+
+### Le Chat (Mistral)
+
+*Available on all plans, including free.*
+
+1. **Go to Connectors**: Open Mistral in your browser, then go to `Intelligence` > `Connectors`.
+2. **Add a custom connector**: Click `Add connector` > `Custom MCP Connector`, give it a name (for example `DataGouv`), and set the server URL to `https://mcp.data.gouv.fr/mcp`.
+3. **No authentication**: Leave authentication disabled.
+4. **Create**: Click **Create**.
+
+### Mistral Vibe CLI
+
+Edit your Vibe config (default `~/.vibe/config.toml`) and add the MCP server:
+
+```toml
+[[mcp_servers]]
+name = "datagouv"
+transport = "streamable-http"
+url = "https://mcp.data.gouv.fr/mcp"
+```
+
+See the full Vibe MCP options in the official docs: [MCP server configuration](https://github.com/mistralai/mistral-vibe?tab=readme-ov-file#mcp-server-configuration).
+
+### Kiro IDE
+
+Add the following to your Kiro MCP configuration file (`.kiro/settings/mcp.json` in your workspace, or `~/.kiro/settings/mcp.json` for global config):
+
+```json
+{
+  "mcpServers": {
+    "datagouv": {
+      "url": "https://mcp.data.gouv.fr/mcp"
+    }
+  }
+}
+```
+
+### Kiro CLI
+
+Add the following to `~/.kiro/settings/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "datagouv": {
+      "url": "https://mcp.data.gouv.fr/mcp"
+    }
+  }
+}
+```
+
 ### IBM Bob
 
 IBM Bob supports MCP servers through its settings. To configure the server:
@@ -153,6 +179,21 @@ Both files use JSON format with an mcpServers object containing named server con
     "datagouv": {
       "url": "https://mcp.data.gouv.fr/mcp",
       "type": "streamable-http"
+    }
+  }
+}
+```
+
+### VS Code
+
+Add the following to your VS Code `settings.json`:
+
+```json
+{
+  "servers": {
+    "datagouv": {
+      "url": "https://mcp.data.gouv.fr/mcp",
+      "type": "http"
     }
   }
 }

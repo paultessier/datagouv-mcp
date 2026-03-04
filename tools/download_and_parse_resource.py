@@ -309,7 +309,7 @@ def _parse_json(
     try:
         data = json.loads(text)
         if isinstance(data, list):
-            return data[:max_rows]
+            return data
         if isinstance(data, dict):
             return [data]
     except json.JSONDecodeError:

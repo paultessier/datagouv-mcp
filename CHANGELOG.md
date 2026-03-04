@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.20 (2026-03-04)
+
+- feat: better health check ([#64](https://github.com/datagouv/datagouv-mcp/pull/64))
+- feat: remove download_and_parse_resource tool ([#66](https://github.com/datagouv/datagouv-mcp/pull/66))
+
+
 ## 0.2.19 (2026-03-04)
 
 - docs: add TODO

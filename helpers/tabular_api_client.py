@@ -4,6 +4,7 @@ from typing import Any
 import httpx
 
 from helpers import env_config
+from helpers.user_agent import USER_AGENT
 
 logger = logging.getLogger("datagouv_mcp")
 
@@ -17,7 +18,7 @@ async def _get_session(
 ) -> tuple[httpx.AsyncClient, bool]:
     if session is not None:
         return session, False
-    new_session = httpx.AsyncClient()
+    new_session = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
     return new_session, True
 
 

@@ -6,6 +6,7 @@ import httpx
 import yaml
 
 from helpers import env_config
+from helpers.user_agent import USER_AGENT
 
 logger = logging.getLogger("datagouv_mcp")
 
@@ -29,7 +30,7 @@ async def get_resource_details(
     """
     own = session is None
     if own:
-        session = httpx.AsyncClient()
+        session = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
     assert session is not None
     try:
         base_url: str = env_config.get_base_url("datagouv_api")
@@ -45,7 +46,7 @@ async def get_resource_metadata(
 ) -> dict[str, Any]:
     own = session is None
     if own:
-        session = httpx.AsyncClient()
+        session = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
     assert session is not None
     try:
         data = await get_resource_details(resource_id, session=session)
@@ -69,7 +70,7 @@ async def get_dataset_details(
     """
     own = session is None
     if own:
-        session = httpx.AsyncClient()
+        session = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
     assert session is not None
     try:
         base_url: str = env_config.get_base_url("datagouv_api")
@@ -85,7 +86,7 @@ async def get_dataset_metadata(
 ) -> dict[str, Any]:
     own = session is None
     if own:
-        session = httpx.AsyncClient()
+        session = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
     assert session is not None
     try:
         data = await get_dataset_details(dataset_id, session=session)
@@ -105,7 +106,7 @@ async def get_resource_and_dataset_metadata(
 ) -> dict[str, Any]:
     own = session is None
     if own:
-        session = httpx.AsyncClient()
+        session = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
     try:
         res: dict[str, Any] = await get_resource_metadata(resource_id, session=session)
         ds: dict[str, Any] = {}
@@ -129,7 +130,7 @@ async def get_resources_for_dataset(
     """
     own = session is None
     if own:
-        session = httpx.AsyncClient()
+        session = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
     try:
         ds = await get_dataset_metadata(dataset_id, session=session)
         base_url: str = env_config.get_base_url("datagouv_api")
@@ -164,7 +165,7 @@ async def fetch_openapi_spec(
     """
     own = session is None
     if own:
-        session = httpx.AsyncClient()
+        session = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
     assert session is not None
     try:
         logger.debug("Fetching OpenAPI spec from %s", url)
@@ -196,7 +197,7 @@ async def get_dataservice_details(
     """
     own = session is None
     if own:
-        session = httpx.AsyncClient()
+        session = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
     assert session is not None
     try:
         base_url: str = env_config.get_base_url("datagouv_api")
@@ -226,7 +227,7 @@ async def search_dataservices(
     """
     own = session is None
     if own:
-        session = httpx.AsyncClient()
+        session = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
     assert session is not None
     try:
         base_url: str = env_config.get_base_url("datagouv_api")
@@ -295,7 +296,7 @@ async def search_datasets(
     """
     own = session is None
     if own:
-        session = httpx.AsyncClient()
+        session = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
     assert session is not None
     try:
         base_url: str = env_config.get_base_url("datagouv_api")

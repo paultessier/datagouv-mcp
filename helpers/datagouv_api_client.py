@@ -231,7 +231,7 @@ async def search_dataservices(
     assert session is not None
     try:
         base_url: str = env_config.get_base_url("datagouv_api")
-        url = f"{base_url}1/dataservices/"
+        url = f"{base_url}2/dataservices/search/"
         params = {
             "q": query,
             "page": page,
@@ -300,8 +300,8 @@ async def search_datasets(
     assert session is not None
     try:
         base_url: str = env_config.get_base_url("datagouv_api")
-        # Use API v1 for dataset search
-        url = f"{base_url}1/datasets/"
+        # Use API v2 for dataset search
+        url = f"{base_url}2/datasets/search/"
         params = {
             "q": query,
             "page": page,

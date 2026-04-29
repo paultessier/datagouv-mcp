@@ -283,25 +283,76 @@ Docker is required for the recommended setup. Install it via [Docker Desktop](ht
 
 #### 🐳 With Docker (Recommended)
 
-```shell
-# With default settings (port 8000, prod environment)
-docker compose up -d
+The Docker setup publishes the MCP HTTP server on your host machine. After startup, use it from your host at `http://127.0.0.1:<port>` or `http://localhost:<port>`.
 
-# With custom environment variables
-MCP_PORT=8007 DATAGOUV_API_ENV=demo LOG_LEVEL=DEBUG docker compose up -d
+`/health` is the easiest endpoint to test manually. `/mcp` is the actual MCP endpoint used by chatbots and MCP clients. There is no HTML UI at `/`, so opening `http://127.0.0.1:8000/` in a browser and seeing no app page is expected.
 
-# Stop
-docker compose down
-```
+1. **Optional: create a `.env` file for Docker Compose**
 
-**Environment variables:**
-- `MCP_HOST`: host to bind to (defaults to `0.0.0.0`). Set to `127.0.0.1` for local development to follow MCP security best practices.
-- `MCP_PORT`: port for the MCP HTTP server (defaults to `8000` when unset).
-- `MCP_ENV`: environment name reported to Sentry (defaults to `local` when unset). Set explicitly to `prod`, `preprod`, or `demo` in your deployment.
-- `DATAGOUV_API_ENV`: `prod` (default) or `demo`. This controls which data.gouv.fr environement it uses the data from (https://www.data.gouv.fr or https://demo.data.gouv.fr). By default the MCP server talks to the production data.gouv.fr. Set `DATAGOUV_API_ENV=demo` if you specifically need the demo environment.
-- `LOG_LEVEL`: Python logging level for the application (defaults to `INFO`). Common values: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`.
-- `SENTRY_DSN`: Sentry DSN to enable error and performance monitoring. Monitoring is disabled when unset.
-- `SENTRY_SAMPLE_RATE`: sampling rate for Sentry traces and profiles (float `0.0`–`1.0`, defaults to `1.0`).
+   Docker Compose automatically reads `.env` from the project root:
+
+   ```shell
+   cp .env.example .env
+   ```
+
+   The provided `docker-compose.yml` forwards these variables into the container:
+   - `MCP_HOST` (`0.0.0.0` by default)
+   - `MCP_PORT` (`8000` by default)
+   - `DATAGOUV_API_ENV` (`prod` by default)
+   - `MATOMO_URL`
+   - `MATOMO_SITE_ID`
+   - `MATOMO_AUTH_TOKEN`
+
+2. **Start the container**
+
+   ```shell
+   # Build and start with default settings (host 0.0.0.0, port 8000, prod environment)
+   docker compose up --build -d
+
+   # Start on another port and target the demo data.gouv.fr environment
+   MCP_PORT=8007 DATAGOUV_API_ENV=demo docker compose up --build -d
+   ```
+
+3. **Verify that the port is published and the server is reachable**
+
+   ```shell
+   # Confirm the container is running and the port is published
+   docker compose ps
+
+   # Follow container logs
+   docker compose logs -f datagouv-mcp
+
+   # Check the health endpoint from your host machine
+   curl http://127.0.0.1:8000/health
+
+   # If you changed MCP_PORT, use that port instead
+   curl http://127.0.0.1:8007/health
+   ```
+
+   If the server is healthy, `/health` returns JSON similar to:
+
+   ```json
+   {"status":"ok","uptime_since":"...","version":"...","env":"...","data_env":"prod"}
+   ```
+
+4. **Use the MCP endpoint in your client**
+
+   Use this URL in ChatGPT, Claude, Cursor, MCP Inspector, or any other MCP-compatible client:
+
+   ```text
+   http://127.0.0.1:8000/mcp
+   ```
+
+   If you changed `MCP_PORT`, update the URL accordingly, for example `http://127.0.0.1:8007/mcp`.
+
+5. **Stop the container**
+
+   ```shell
+   docker compose down
+   ```
+
+> [!IMPORTANT]
+> If `docker compose ps` shows the port published but `http://<your-machine-ip>:8000/mcp` still fails, that is usually not a Docker port-mapping problem. The server enables MCP transport security in `main.py` and only allows `localhost`, `127.0.0.1`, `mcp.data.gouv.fr`, and `mcp.preprod.data.gouv.fr` by default. For local use, prefer `http://127.0.0.1:<port>/mcp` or `http://localhost:<port>/mcp`. If you need to expose the server through another hostname, IP, or reverse proxy, extend `allowed_hosts` and `allowed_origins` in `main.py` to match your deployment.
 
 #### ⚙️ Manual Installation
 
@@ -328,6 +379,10 @@ You will need [uv](https://github.com/astral-sh/uv) to install dependencies and 
   LOG_LEVEL=INFO  # Python log level (default: INFO)
   ```
 
+  Other supported runtime variables:
+  - `MATOMO_URL`, `MATOMO_SITE_ID`, `MATOMO_AUTH_TOKEN`: enable Matomo request and tool tracking when set
+  - `SENTRY_DSN`, `SENTRY_SAMPLE_RATE`: enable Sentry error/performance monitoring when set
+
   Load the variables with your preferred method, e.g.:
   ```shell
   set -a && source .env && set +a
@@ -342,6 +397,48 @@ You will need [uv](https://github.com/astral-sh/uv) to install dependencies and 
 
 Follow the steps in [Connect your chatbot to the MCP server](#-connect-your-chatbot-to-the-mcp-server) and simply swap the hosted URL for your local endpoint (default: `http://127.0.0.1:${MCP_PORT:-8000}/mcp`).
 
+## 🏗️ How the server works
+
+### Runtime architecture
+
+```mermaid
+flowchart LR
+    Client["Chatbot / MCP Inspector / scripts/call_tool.py"] -->|HTTP requests to /mcp| App["Uvicorn ASGI app<br/>main.py"]
+    App --> Security["Transport security<br/>allowed_hosts + allowed_origins"]
+    Security --> FastMCP["FastMCP server<br/>stateless HTTP transport"]
+    FastMCP --> Registry["tools/__init__.py<br/>register_tools()"]
+    Registry --> Tools["tools/*.py<br/>one module per MCP tool"]
+    Tools --> Helpers["helpers/*.py<br/>API clients, env config, logging"]
+    Helpers --> Datagouv["data.gouv.fr APIs"]
+    Helpers --> Tabular["Tabular API"]
+    Helpers --> Metrics["Metrics API"]
+    Helpers --> Crawler["Crawler API"]
+    App --> Health["GET /health"]
+    Health --> Probe["helpers/health_probe.py<br/>full MCP self-check"]
+    Probe --> InternalClient["helpers/mcp_client.py<br/>calls http://localhost:${MCP_PORT}/mcp"]
+    InternalClient --> FastMCP
+    App --> Observability["Optional Matomo + Sentry"]
+```
+
+### Request lifecycle
+
+1. A chatbot or MCP client sends a JSON-RPC request to `POST /mcp`.
+2. `main.py` boots the ASGI app, applies MCP transport-security checks, and delegates the request to `FastMCP`.
+3. `tools/__init__.py` registers each tool module, so `FastMCP` can dispatch the request to the matching tool function.
+4. The selected tool uses shared helper modules to call upstream data.gouv.fr services.
+5. The helper layer chooses the correct upstream base URLs from `DATAGOUV_API_ENV` and returns normalized data.
+6. The tool formats the response as MCP text output and returns it to the client.
+
+The `/health` endpoint is intentionally stronger than a simple liveness probe: it performs a real internal MCP handshake and executes `search_datasets` through `helpers/health_probe.py`, which makes sure the full request path is working.
+
+### Repository layout
+
+- `main.py`: application entrypoint, Uvicorn startup, FastMCP initialization, transport security, `/health`, and HTTP-level monitoring wrapper.
+- `tools/`: the MCP tool layer. Each file registers one read-only tool such as dataset search, resource inspection, tabular querying, dataservice lookup, or metrics retrieval.
+- `helpers/`: shared infrastructure including API clients, environment routing, logging, Matomo tracking, Sentry setup, and the internal MCP health-check client.
+- `scripts/call_tool.py`: small CLI helper to call a tool against a running MCP server.
+- `tests/`: unit tests plus end-to-end health and stress tests.
+
 ## 🚚 Transport support
 
 The MCP server is built using the [official Python SDK for MCP servers and clients](https://github.com/modelcontextprotocol/python-sdk) and uses the **Streamable HTTP transport only**.
@@ -353,6 +450,8 @@ The MCP server is built using the [official Python SDK for MCP servers and clien
 **Streamable HTTP transport (standards-compliant):**
 - `POST /mcp` - JSON-RPC messages (client → server)
 - `GET /health` - Health check endpoint: runs a full MCP handshake and tool call. Returns `{"status":"ok",...}` with HTTP 200 if healthy, or `{"status":"mcp_unavailable"}` with HTTP 503 if the MCP stack is not responding correctly.
+
+There is no browser UI at `/`. Use `/health` for a quick manual check and `/mcp` from an MCP-compatible client.
 
 ## 🛠️ Available Tools
 

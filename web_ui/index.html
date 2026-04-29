@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>data.gouv.fr Explorer</title>
+    <link rel="stylesheet" href="/ui/assets/styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <p class="eyebrow">Local browser UI for the MCP server</p>
+        <h1>Explore data.gouv.fr with one question</h1>
+        <p class="hero-copy">
+          Ask in plain language, review matching datasets, dataservices, and organizations,
+          then export the displayed result set as CSV, XLSX, or JSON.
+        </p>
+        <div class="example-row">
+          <button class="example-chip" data-example="Open data about bike lanes in Paris">Bike lanes in Paris</button>
+          <button class="example-chip" data-example="Datasets about logement social in Lyon">Logement social in Lyon</button>
+          <button class="example-chip" data-example="APIs about addresses in France">Address APIs in France</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="query-panel">
+          <label class="field-label" for="question">Question</label>
+          <div class="question-row">
+            <textarea id="question" rows="4" placeholder="Example: show me datasets about electric vehicle charging stations in Occitanie"></textarea>
+            <div class="controls">
+              <label class="field-label small-label" for="page-size">Results per section</label>
+              <select id="page-size">
+                <option value="4">4</option>
+                <option value="6" selected>6</option>
+                <option value="8">8</option>
+                <option value="10">10</option>
+                <option value="12">12</option>
+              </select>
+              <button id="search-button" class="primary-button">Search the catalog</button>
+            </div>
+          </div>
+          <p class="panel-note">
+            This lightweight UI turns your question into search keywords against the current
+            data.gouv.fr catalog. The MCP server endpoints remain available at <code>/mcp</code>.
+          </p>
+        </section>
+
+        <section class="results-panel">
+          <div class="results-toolbar">
+            <div>
+              <p class="results-kicker">Result overview</p>
+              <h2 id="answer">Run a search to populate the explorer.</h2>
+            </div>
+            <div class="download-group">
+              <button class="secondary-button" id="download-json" disabled>JSON</button>
+              <button class="secondary-button" id="download-csv" disabled>CSV</button>
+              <button class="secondary-button" id="download-xlsx" disabled>XLSX</button>
+            </div>
+          </div>
+          <div id="status" class="status-line" aria-live="polite"></div>
+          <div id="summary-cards" class="summary-grid"></div>
+          <div id="results-sections" class="results-grid"></div>
+        </section>
+
+        <section class="table-panel">
+          <div class="table-header">
+            <div>
+              <p class="results-kicker">Export preview</p>
+              <h2>Flat table of displayed rows</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="results-table">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/ui/assets/app.js"></script>
+  </body>
+</html>

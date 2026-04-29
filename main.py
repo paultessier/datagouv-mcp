@@ -11,6 +11,7 @@ import uvicorn
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
+from helpers.browser_ui import browser_ui_app
 from helpers.health_probe import _run_health_check
 from helpers.logging import MAIN_LOGGER_NAME, UVICORN_LOGGING_CONFIG
 from helpers.matomo import (
@@ -128,7 +129,17 @@ def with_monitoring(
     return app
 
 
-asgi_app = with_monitoring(mcp.streamable_http_app())
+mcp_http_app = with_monitoring(mcp.streamable_http_app())
+
+
+async def asgi_app(scope, receive, send):
+    if scope["type"] == "http":
+        path: str = scope.get("path", "")
+        if path == "/ui" or path == "/ui/" or path.startswith("/ui/"):
+            await browser_ui_app(scope, receive, send)
+            return
+
+    await mcp_http_app(scope, receive, send)
 
 
 # Run with streamable HTTP transport

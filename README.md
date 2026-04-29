@@ -285,7 +285,7 @@ Docker is required for the recommended setup. Install it via [Docker Desktop](ht
 
 The Docker setup publishes the MCP HTTP server on your host machine. After startup, use it from your host at `http://127.0.0.1:<port>` or `http://localhost:<port>`.
 
-`/health` is the easiest endpoint to test manually. `/mcp` is the actual MCP endpoint used by chatbots and MCP clients. There is no HTML UI at `/`, so opening `http://127.0.0.1:8000/` in a browser and seeing no app page is expected.
+`/health` is the easiest endpoint to test manually. `/mcp` is the actual MCP endpoint used by chatbots and MCP clients. A lightweight browser UI is also available at `/ui`, while `/` intentionally remains empty.
 
 1. **Optional: create a `.env` file for Docker Compose**
 
@@ -345,7 +345,17 @@ The Docker setup publishes the MCP HTTP server on your host machine. After start
 
    If you changed `MCP_PORT`, update the URL accordingly, for example `http://127.0.0.1:8007/mcp`.
 
-5. **Stop the container**
+5. **Optional: use the built-in browser UI**
+
+   Open:
+
+   ```text
+   http://127.0.0.1:8000/ui
+   ```
+
+   The UI lets you type a plain-language question, browse matching datasets, dataservices, and organizations, and download the displayed result table as `CSV`, `XLSX`, or `JSON`.
+
+6. **Stop the container**
 
    ```shell
    docker compose down
@@ -397,18 +407,32 @@ You will need [uv](https://github.com/astral-sh/uv) to install dependencies and 
 
 Follow the steps in [Connect your chatbot to the MCP server](#-connect-your-chatbot-to-the-mcp-server) and simply swap the hosted URL for your local endpoint (default: `http://127.0.0.1:${MCP_PORT:-8000}/mcp`).
 
+### 3. Use the local browser UI
+
+If you want a simple local UX without wiring a chatbot client first, open:
+
+```text
+http://127.0.0.1:${MCP_PORT:-8000}/ui
+```
+
+The browser UI is a lightweight catalog explorer layered on top of the same server. It converts your question into keyword searches against data.gouv.fr, shows matching datasets, dataservices, and organizations, and lets you export the displayed rows as `CSV`, `XLSX`, or `JSON`.
+
 ## 🏗️ How the server works
 
 ### Runtime architecture
 
 ```mermaid
 flowchart LR
-    Client["Chatbot / MCP Inspector / scripts/call_tool.py"] -->|HTTP requests to /mcp| App["Uvicorn ASGI app<br/>main.py"]
+    Browser["Browser UI<br/>/ui"] --> App["Uvicorn ASGI app<br/>main.py"]
+    Client["Chatbot / MCP Inspector / scripts/call_tool.py"] -->|HTTP requests to /mcp| App
+    App --> UI["Browser UI handler<br/>helpers/browser_ui.py"]
+    UI --> Search["Catalog search layer<br/>helpers/catalog_ui.py"]
+    Search --> Helpers["helpers/*.py<br/>API clients, env config, logging"]
     App --> Security["Transport security<br/>allowed_hosts + allowed_origins"]
     Security --> FastMCP["FastMCP server<br/>stateless HTTP transport"]
     FastMCP --> Registry["tools/__init__.py<br/>register_tools()"]
     Registry --> Tools["tools/*.py<br/>one module per MCP tool"]
-    Tools --> Helpers["helpers/*.py<br/>API clients, env config, logging"]
+    Tools --> Helpers
     Helpers --> Datagouv["data.gouv.fr APIs"]
     Helpers --> Tabular["Tabular API"]
     Helpers --> Metrics["Metrics API"]
@@ -422,20 +446,22 @@ flowchart LR
 
 ### Request lifecycle
 
-1. A chatbot or MCP client sends a JSON-RPC request to `POST /mcp`.
-2. `main.py` boots the ASGI app, applies MCP transport-security checks, and delegates the request to `FastMCP`.
-3. `tools/__init__.py` registers each tool module, so `FastMCP` can dispatch the request to the matching tool function.
-4. The selected tool uses shared helper modules to call upstream data.gouv.fr services.
-5. The helper layer chooses the correct upstream base URLs from `DATAGOUV_API_ENV` and returns normalized data.
-6. The tool formats the response as MCP text output and returns it to the client.
+1. A chatbot or MCP client sends a JSON-RPC request to `POST /mcp`, or a browser sends an HTTP request to `/ui`.
+2. `main.py` boots the ASGI app and routes `/ui` traffic to the lightweight browser UI while keeping MCP traffic on the FastMCP HTTP app.
+3. For MCP requests, the app applies transport-security checks and delegates to `FastMCP`.
+4. `tools/__init__.py` registers each tool module, so `FastMCP` can dispatch the request to the matching tool function.
+5. The selected MCP tool, or the browser UI search layer, uses shared helper modules to call upstream data.gouv.fr services.
+6. The helper layer chooses the correct upstream base URLs from `DATAGOUV_API_ENV` and returns normalized data.
+7. The result is returned either as MCP text output (`/mcp`) or as browser JSON/download content (`/ui`).
 
 The `/health` endpoint is intentionally stronger than a simple liveness probe: it performs a real internal MCP handshake and executes `search_datasets` through `helpers/health_probe.py`, which makes sure the full request path is working.
 
 ### Repository layout
 
-- `main.py`: application entrypoint, Uvicorn startup, FastMCP initialization, transport security, `/health`, and HTTP-level monitoring wrapper.
+- `main.py`: application entrypoint, Uvicorn startup, FastMCP initialization, `/ui` dispatch, transport security, `/health`, and HTTP-level monitoring wrapper.
 - `tools/`: the MCP tool layer. Each file registers one read-only tool such as dataset search, resource inspection, tabular querying, dataservice lookup, or metrics retrieval.
-- `helpers/`: shared infrastructure including API clients, environment routing, logging, Matomo tracking, Sentry setup, and the internal MCP health-check client.
+- `helpers/`: shared infrastructure including API clients, environment routing, logging, Matomo tracking, Sentry setup, export helpers, the browser UI search layer, and the internal MCP health-check client.
+- `web_ui/`: static HTML, CSS, and JavaScript for the lightweight browser experience at `/ui`.
 - `scripts/call_tool.py`: small CLI helper to call a tool against a running MCP server.
 - `tests/`: unit tests plus end-to-end health and stress tests.
 
@@ -450,8 +476,11 @@ The MCP server is built using the [official Python SDK for MCP servers and clien
 **Streamable HTTP transport (standards-compliant):**
 - `POST /mcp` - JSON-RPC messages (client → server)
 - `GET /health` - Health check endpoint: runs a full MCP handshake and tool call. Returns `{"status":"ok",...}` with HTTP 200 if healthy, or `{"status":"mcp_unavailable"}` with HTTP 503 if the MCP stack is not responding correctly.
+- `GET /ui` - Lightweight browser UI for interactive catalog exploration and download exports
+- `POST /ui/api/search` - Browser UI search endpoint returning datasets, dataservices, organizations, and a flat export table
+- `POST /ui/api/export` - Browser UI export endpoint for `csv`, `xlsx`, and `json`
 
-There is no browser UI at `/`. Use `/health` for a quick manual check and `/mcp` from an MCP-compatible client.
+There is no browser UI at `/`. Use `/ui` for the built-in explorer, `/health` for a quick manual check, and `/mcp` from an MCP-compatible client.
 
 ## 🛠️ Available Tools
 
